@@ -1,18 +1,24 @@
 const puppeteer = require("puppeteer");
-import merge from "easy-pdf-merge";
-import "jquery";
+
+let serverOptions = {
+  headless: false,
+  waitForTimeOut: 1000,
+};
+
+let { headless, waitForTimeOut } = serverOptions;
 
 describe("labeling-tool", () => {
-  let spanElement, url, code, title, content, browser, page;
   jest.setTimeout(500000);
+  let spanElement, url, code, title, content, browser, page;
   beforeAll(async () => {
-    browser = await puppeteer.launch({ headless: true });
+    browser = await puppeteer.launch({ headless, args: ["--start-maximized"] });
     page = await browser.newPage();
+    await page.setDefaultNavigationTimeout(0);
     await page.setViewport({
       width: 1200,
-      height: 800
+      height: 800,
     });
-    page.on("console", msg => {
+    page.on("console", (msg) => {
       for (let i = 0; i < msg.args().length; ++i) {
         let text = msg.args()[i];
         console.log(`${i}: ${text}`);
@@ -23,17 +29,17 @@ describe("labeling-tool", () => {
     browser.close();
   });
   const utils = {
-    goto: async where => {
+    goto: async (where) => {
       await page.goto(where, { waitUntil: "load" });
-      await page.waitFor(1000);
+      await page.waitFor(waitForTimeOut);
     },
-    $$: async element => {
+    $$: async (element) => {
       await page.waitForSelector(element);
       return await page.$$(element);
     },
     $eval: async (element, event) => {
       await page.waitForSelector(element, {
-        visible: true
+        visible: true,
       });
       return await page.$eval(
         element,
@@ -50,7 +56,7 @@ describe("labeling-tool", () => {
     },
     $$eval: async (element, num, event) => {
       await page.waitForSelector(element, {
-        visible: true
+        visible: true,
       });
       return await page.$$eval(
         element,
@@ -68,42 +74,53 @@ describe("labeling-tool", () => {
     },
     type: async (element, data) => {
       await page.waitForSelector(element, {
-        visible: true
+        visible: true,
       });
       await page.type(element, data);
-      await page.waitFor(1000);
+      await page.waitFor(waitForTimeOut);
     },
     click: async (element, options) => {
       await page.waitForSelector(element, {
-        visible: true
+        visible: true,
       });
       await page.click(element, options);
-      await page.waitFor(1000);
+      await page.waitFor(waitForTimeOut);
     },
-    press: async keyCode => {
+    press: async (keyCode) => {
       await page.keyboard.press(keyCode);
-      await page.waitFor(1000);
+      await page.waitFor(waitForTimeOut);
     },
-    waitForLoading: async element => {
+    waitForLoading: async (element) => {
       await page.waitForFunction(
-        element => !document.querySelector(element),
+        (element) => !document.querySelector(element),
         {
-          timeout: 50000
+          timeout: 50000,
         },
         element
       );
-      await page.waitFor(1000);
-    }
+      await page.waitFor(waitForTimeOut);
+    },
+    getPDF: async (name) => {
+      if (headless) {
+        await page.pdf({ path: `./pdf/${name}.pdf` });
+        await page.waitFor(waitForTimeOut);
+      }
+    },
+    getScreenShot: async (name, options = {}) => {
+      await page.screenshot({
+        path: `./img/${name}`,
+        ...options,
+      });
+    },
   };
-
   // it("取得JSON網址", async () => {
   //   await utils.goto("https://monospace.kktix.cc/events.json");
   //   await page.evaluate;
   //   url = await page.evaluate(() => {
   //     let url, json;
   //     json = JSON.parse(document.querySelector("body").innerText);
-  //     json["entry"].forEach(item => {
-  //       Object.keys(item).forEach(key => {
+  //     json["entry"].forEach((item) => {
+  //       Object.keys(item).forEach((key) => {
   //         if (key === "title") {
   //           if (item[key].includes("0xFE")) {
   //             url = item["url"];
@@ -116,14 +133,9 @@ describe("labeling-tool", () => {
   //   });
   //   await page.waitFor(1000);
   //   console.log(url);
-  //   await page.screenshot({
-  //     path: "./img/取得JSON網址.png",
-  //     fullPage: true
-  //   });
-  //   await page.emulateMediaType("screen");
-  //   await page.pdf({ path: "./pdf/取得JSON網址.pdf" });
-  // }, 50000);
-
+  //   await utils.getScreenShot("取得JSON網址.png", { fullPage: true });
+  //   await utils.getPDF("取得JSON網址");
+  // });
   // it("登入活動頁面", async () => {
   //   await utils.goto(url);
   //   spanElement = await utils.$eval(
@@ -168,13 +180,9 @@ describe("labeling-tool", () => {
   //     return content;
   //   });
   //   console.log(content);
-  //   await page.screenshot({
-  //     path: "./img/登入活動頁面.png",
-  //     fullPage: true
-  //   });
-  //   await page.pdf({ path: "./pdf/登入活動頁面.pdf" });
-  // }, 50000);
-
+  //   await utils.getScreenShot("登入活動頁面.png", { fullPage: true });
+  //   await utils.getPDF("登入活動頁面");
+  // });
   // it("data-code解碼", async () => {
   //   await utils.goto(
   //     "https://www.convertstring.com/zh_TW/EncodeDecode/Base64Decode"
@@ -188,13 +196,9 @@ describe("labeling-tool", () => {
   //     return code;
   //   });
   //   console.log(code);
-  //   await page.screenshot({
-  //     path: "./img/data-code解碼.png",
-  //     fullPage: true
-  //   });
-  //   await page.pdf({ path: "./pdf/ata-code解碼.pdf" });
-  // }, 50000);
-
+  //   await utils.getScreenShot("ata-code解碼.png", { fullPage: true });
+  //   await utils.getPDF("ata-code解碼");
+  // });
   // it("填寫票數", async () => {
   //   await utils.goto(url);
   //   await utils.click(
@@ -210,23 +214,14 @@ describe("labeling-tool", () => {
   //     "#ticket_344407 > div > span.ticket-quantity.ng-scope > button.btn-default.plus"
   //   );
   //   await utils.click("#person_agree_terms");
-  //   await page.screenshot({
-  //     path: "./img/填寫票數.png",
-  //     fullPage: true
-  //   });
-  //   await page.pdf({ path: "./pdf/填寫票數.pdf" });
+  //   await utils.getScreenShot("填寫票數.png", { fullPage: true });
+  //   await utils.getPDF("填寫票數");
+
   //   await utils.click(
   //     "#registrationsNewApp > div > div:nth-child(5) > div.form-actions.plain.align-center.register-new-next-button-area"
   //   );
-  //   await page.waitForSelector(
-  //     "#guestModal > div.modal-dialog > div > div.modal-footer > button"
-  //   );
-  // }, 50000);
+  // });
   // it("填寫表單", async () => {
-  //   await utils.goto(url);
-  //   await utils.click(
-  //     "body > div.outer-wrapper > div.content-wrapper > div > div.tickets > a"
-  //   );
   //   await utils.click(
   //     "#guestModal > div.modal-dialog > div > div.modal-footer > button"
   //   );
@@ -238,35 +233,29 @@ describe("labeling-tool", () => {
   //   await utils.type("#field_text_701845 > div > div > input", "0912345678");
   //   await utils.type("#field_text_701846 > div > div > input", code);
   //   await utils.click("#person_agree_terms");
-  //   await page.screenshot({
-  //     path: "./img/填寫表單.png",
-  //     fullPage: true
-  //   });
-  //   await page.pdf({ path: "./pdf/填寫表單.pdf" });
+  //   await utils.getScreenShot("填寫表單.png", { fullPage: true });
+  //   await utils.getPDF("填寫表單");
   //   await utils.click(
   //     "#registrations_controller > div:nth-child(4) > div:nth-child(2) > div > div.form-actions.plain.align-center.ng-scope > a"
   //   );
   //   await page.waitFor(5000);
-  //   await page.screenshot({
-  //     path: "./img/完成訂單.png",
-  //     fullPage: true
-  //   });
-  //   await page.pdf({ path: "./pdf/完成訂單.pdf" });
-  // }, 50000);
+  //   await utils.getScreenShot("完成訂單.png", { fullPage: true });
+  //   await utils.getPDF("完成訂單");
+  // });
   it("填寫票數", async () => {
-    console.log(merge);
     await page.addScriptTag({
-      path: "/node_modules/easy-pdf-merge/distribution/lib/PDFMerger.js"
+      path: `./node_modules/easy-pdf-merge`,
     });
-    await page.evaluate(() => {
-      merge(
-        ["../../../pdf/完成訂單.pdf", "../../../pdf/取得JSON網址.pdf"],
-        "a.pdf",
-        function (err) {
-          if (err) return console.log(err);
-          console.log("Successfully merged!");
-        }
-      );
-    });
-  }, 50000);
+    // await page.evaluate(() => {
+    //   window.merge(
+    //     ["../../../pdf/完成訂單.pdf", "../../../pdf/取得JSON網址.pdf"],
+    //     "a.pdf",
+    //     function(err) {
+    //       if (err) return console.log(err);
+    //       console.log("Successfully merged!");
+    //     }
+    //   );
+    // });
+    console.log(`${process.cwd()}`);
+  });
 });
